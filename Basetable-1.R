@@ -66,10 +66,7 @@ base$did.renew<-as.integer(base$did.renew)
 base$num.credit<-as.integer(base$num.credit)
 base$did.credit<-as.integer(base$did.credit)
 # deal with NAs
-base$num.complaints <- ifelse(is.na(base$num.complaints),0,base$num.complaints)
-base$sum.totaldiscount <- ifelse(is.na(base$sum.totaldiscount),0,base$sum.totaldiscount)
-base$sum.totalprice <- ifelse(is.na(base$sum.totalprice),0,base$sum.totalprice)
-base$sum.credit <- ifelse(is.na(base$sum.credit),0,base$sum.credit)
+base[is.na(base == TRUE)] <- 0
 
 ## COMPUTE DV
 
