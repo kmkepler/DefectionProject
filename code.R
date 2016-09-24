@@ -75,7 +75,7 @@ base[is.na(base) == TRUE] <- 0
 ## COMPUTE DV
 # CALC: DV 1 if churn, else 2
 base$DV = as.factor(ifelse(base$max.start > t4,2,1))
-base$DV = as.factor(ifelse(base$max.end > t4,DV,1))
+base$DV = as.factor(ifelse(base$max.end > t4,base$DV,1))
 
 #load the package randomForest 
 if (!require("randomForest")) {
