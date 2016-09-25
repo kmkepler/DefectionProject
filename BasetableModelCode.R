@@ -93,40 +93,33 @@ if (!require("randomForest")) {
 }
 
 #randomize order of indicators
-allind <- sample(x=1:nrow(base),size=nrow(base))
-#split in three parts 
-trainind <- allind[1:round(length(allind)/2)]
-testind <- allind[round(length(allind)*(1/2)+1):length(allind)]
+ind <- 1:nrow(base)
+indTRAIN <- sample(ind,round(0.5*length(ind)))
+indTEST <- ind[-indTRAIN]
 
-BasetableTRAIN <- base[trainind,]
-BasetableTEST <- base[testind,]
+DV <-base$DV
+base$DV <- NULL
 
-yTRAIN <- BasetableTRAIN$DV
-BasetableTRAIN$DV <- NULL
-
-yTEST <- BasetableTEST$DV
-BasetableTEST$DV <- NULL
-
-BasetableTRAIN$CustomerID <- NULL
-BasetableTRAIN$max.end <- NULL
-BasetableTRAIN$max.start <- NULL
-BasetableTRAIN$min.end <- NULL
+base$CustomerID <- NULL
+base$max.end <- NULL
+base$max.start <- NULL
+base$min.end <- NULL
 #BasetableTRAIN$sum.totalprice <- NULL
 #BasetableTRAIN$min.start <- NULL
 #BasetableTRAIN$num.complaints <- NULL
-BasetableTRAIN$days.cust <- NULL
+base$days.cust <- NULL
 #BasetableTRAIN$num.subscriptions <- NULL
 #BasetableTRAIN$sum.totalprice <- NULL
 
-rFmodel <- randomForest(x=(BasetableTRAIN),
-                        y=yTRAIN,  
+rFmodel <- randomForest(x=(base[indTRAIN,]),
+                        y=DV[indTRAIN],  
                         ntree=1000)
 
-predrF <- predict(rFmodel,BasetableTEST,type="prob")[,2]
+predrF <- predict(rFmodel,base[indTEST,],type="prob")[,2]
 #assess final performance
-AUC::auc(roc(predrF,yTEST))
+AUC::auc(roc(predrF,DV[indTEST]))
 
 library('lift')
-TopDecileLift(predrF,yTEST)
+TopDecileLift(predrF,DV[indTEST])
 
 varImpPlot(rFmodel)
