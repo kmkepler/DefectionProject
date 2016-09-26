@@ -1,7 +1,16 @@
+# CHURN PROJECT BZAN 554
+# Dey, Tapajit
+# Gray, Erin
+# Kepler, Kieran
+# Richters, Ana
+
+# CLEAR MEMORY
 rm(list=ls())
 
+# FUNCTION TO CREATE BASETABLE
 create_BT <- function(t1, t2, t3, t4){  
-  
+
+# INSTALL PACKAGES
 if (!require("plyr")) install.packages('plyr'); library('plyr')
 
 # SET DATE FORMAT
@@ -14,7 +23,6 @@ subscriptions<-read.csv("http://ballings.co/hidden/aCRM/data/chapter6/subscripti
 delivery<-read.csv("http://ballings.co/hidden/aCRM/data/chapter6/delivery.txt",sep=";",header=TRUE,colClasses=c("character","character","factor","factor","factor","fDate","fDate"))
 complaints<-read.csv("http://ballings.co/hidden/aCRM/data/chapter6/complaints.txt",sep=";",header=TRUE,colClasses=c("character","character","factor","fDate","factor","factor","factor"))
 credit<-read.csv("http://ballings.co/hidden/aCRM/data/chapter6/credit.txt",sep=";",header=TRUE,colClasses=c("character","character","factor","fDate","factor","numeric","integer"))
-
 
 # CALC: NUMB COMPLAINTS BY CUSTOMER
 complaints <- complaints[which(complaints$ComplaintDate>=t1 & complaints$ComplaintDate<=t2),]
@@ -55,35 +63,34 @@ base<-merge(base,c6,by="CustomerID",all.x=TRUE)
 # change data types
 base$num.credit<-as.integer(base$num.credit)
 base$did.credit<-as.integer(base$did.credit)
-
 # deal with NAs
-#removing 0 subscriptions
-
 base <- base[which(!is.na(base$num.subscriptions)),]
 base <- base[complete.cases(base),]
 
+# RETURN BASETABLE
 return (base)
 }
 
+# FUNCTION TO BUILD MODE
 model.build <- function(start_ind, end_ind, start_dep, end_dep,  evaluate = T){
   
+  # TIMELINE
   t1 <- as.Date(start_ind)
   t4 <- as.Date(end_dep)
   t3 <- as.Date(start_dep)
   t2 <- as.Date(end_ind)
 
+# CALL BASETABLE FUNCTION
 base <- create_BT(t1, t2, t3, t4)
 length_ind <- t2 - t1
 length_op <- t3 - t2
 length_dep <- t4 - t3
 
-## COMPUTE DV
-# CALC: DV 1 if churn, else 2
+## COMPUTE DV (1 if churn, else 2)
 base$DV = as.factor(ifelse(base$max.start > t4,2,1))
 base$DV = as.factor(ifelse(base$max.end > t4,base$DV,1))
 
-
-#load the package randomForest and AUC
+# INSTALL PACKAGES
 if (!require("randomForest")) {
   install.packages('randomForest',
                    repos="https://cran.rstudio.com/", 
@@ -104,61 +111,73 @@ if (!require("lift")) {
                    quiet=TRUE) 
   require('lift')
 }}
-#randomize order of indicators
+
+# RANDOMIZE INDICATORS
 ind <- 1:nrow(base)
 indTRAIN <- sample(ind,round(0.5*length(ind)))
 indTEST <- ind[-indTRAIN]
 
+# ISOLATE DV
 DV <-base$DV
+  
+# DELETE COLUMNS
 base$DV <- NULL
-
-
 base$max.end <- NULL
 base$max.start <- NULL
 base$min.end <- NULL
 base$days.cust <- NULL
 
-
+# RUN MODEL
 rFmodel <- randomForest(x=(base[indTRAIN,]),
                         y=DV[indTRAIN],  
                         ntree=1000)
 
+# RUN IF EVALUATE=TRUE
 if (evaluate){
 predrF <- predict(rFmodel,base[indTEST,],type="prob")[,2]
-
-#assess final performance
 cat("AUC of the model:", AUC::auc(roc(predrF,DV[indTEST])))
 cat("\nTop Decile Lift:", TopDecileLift(predrF,DV[indTEST]))
-
-
 varImpPlot(rFmodel)
 }
+
+# RETURN MODEL, LENGTH OF INDEPENDENT, OPERATIONAL, DEPENDENT
 return (list(rFmodel, length_ind, length_op, length_dep))
 }
 
+# FUNCTION TO DEPLOY MODEL
 model.predict <- function(object, dumpDate){
+  
+  # TIMELINE
   t2 <- as.Date(dumpDate)
   t1 <- t2 - object[[2]]
   t3 <- t2 + object[[3]]
   t4 <- t3 + object[[4]]
   
+  # SAVE MODEL
   rFmodel <- object[[1]]
   
+  # CREATE BASETABLE
   predbase <- create_BT(t1, t2, t3, t4)
   predbase$max.end <- NULL
   predbase$max.start <- NULL
   predbase$min.end <- NULL
   predbase$days.cust <- NULL
+  
+  # RUN PREDICTIONS
   predrF <- predict(rFmodel, predbase, type="prob")[,2]
   
+  # STORE OUTPUT (CUSTOMERID AND SCORE)
   ans <- data.frame("Customer_Id" = predbase$CustomerID, "Score" = predrF)
   ans <- ans[order(ans$Score, decreasing=TRUE),]
-  ans
   
+  # RETURN ANSWER
+  ans  
 }
 
-Cmodel <- model.build("2006-01-02","2009-02-23","2009-02-24","2010-02-24",evaluate = T)
+# CALL MODEL.BUILD
+Cmodel <- model.build("2006-01-02","2009-02-23","2009-02-24","2010-02-24",evaluate = TRUE)
 
+# CALL MODEL.PREDICT
 pred <- model.predict(object=Cmodel, dumpDate="2010-01-01")
 
 
