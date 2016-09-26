@@ -127,9 +127,9 @@ if (evaluate){
 predrF <- predict(rFmodel,base[indTEST,],type="prob")[,2]
 
 #assess final performance
-print (AUC::auc(roc(predrF,DV[indTEST])))
+cat("AUC of the model:", AUC::auc(roc(predrF,DV[indTEST])))
+cat("\nTop Decile Lift:", TopDecileLift(predrF,DV[indTEST]))
 
-print(TopDecileLift(predrF,DV[indTEST]))
 
 varImpPlot(rFmodel)
 }
@@ -157,6 +157,8 @@ model.predict <- function(object, dumpDate){
   
 }
 
-Cmodel <- model.build("2006-01-02","2009-02-23","2009-02-24","2010-02-24",evaluate = F)
+Cmodel <- model.build("2006-01-02","2009-02-23","2009-02-24","2010-02-24",evaluate = T)
 
 pred <- model.predict(object=Cmodel, dumpDate="2010-01-01")
+
+
